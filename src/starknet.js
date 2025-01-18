@@ -5,59 +5,46 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
-const MIN_BALANCE = process.env.MIN_BALANCE || "1000000000000000000"; // 1 token by default
+const MIN_BALANCE = BigInt(process.env.MIN_BALANCE || "1000000000000000000");
 
-// ABI for ERC20 token
 const tokenAbi = [
   {
     members: [
-      {
-        name: "low",
-        offset: 0,
-        type: "felt",
-      },
-      {
-        name: "high",
-        offset: 1,
-        type: "felt",
-      },
+      { name: "low", offset: 0, type: "felt" },
+      { name: "high", offset: 1, type: "felt" },
     ],
     name: "Uint256",
     size: 2,
     type: "struct",
   },
   {
-    inputs: [
-      {
-        name: "account",
-        type: "felt",
-      },
-    ],
+    inputs: [{ name: "account", type: "felt" }],
     name: "balanceOf",
-    outputs: [
-      {
-        name: "balance",
-        type: "Uint256",
-      },
-    ],
+    outputs: [{ name: "balance", type: "Uint256" }],
     stateMutability: "view",
     type: "function",
   },
 ];
 
 export function connect() {
-  return new Provider({
-    sequencer: {
-      network: process.env.STARKNET_NETWORK || "sepolia-alpha",
-    },
-  });
+  try {
+    return new Provider({
+      sequencer: {
+        network: process.env.STARKNET_NETWORK || "mainnet-alpha",
+      },
+    });
+  } catch (error) {
+    console.error("Error connecting to StarkNet provider:", error);
+    throw error;
+  }
 }
 
 export async function checkTokenBalance(provider, address) {
   try {
     const contract = new Contract(tokenAbi, TOKEN_ADDRESS, provider);
     const { balance } = await contract.balanceOf(address);
-    return balance.gte(MIN_BALANCE);
+    const actualBalance = BigInt(balance.low) + (BigInt(balance.high) << 128n);
+    return actualBalance >= MIN_BALANCE;
   } catch (error) {
     console.error("Error checking token balance:", error);
     throw error;

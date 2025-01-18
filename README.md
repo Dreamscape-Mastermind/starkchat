@@ -67,6 +67,14 @@ STARKNET_NETWORK=sepolia-alpha
 DATABASE_URL=http://127.0.0.1:8080  # For local development
 ```
 
+Regarding the Contract: You can use any existing ERC20 token contract on Starknet testnet instead of deploying a new one. Here are some options:
+
+a) Use the ETH token contract on testnet:
+ETH Token Address (Goerli): 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
+
+b) Use the test USDC on Goerli:
+USDC Token Address (Goerli): 0x005a643907b9a4bc6a55e9069c4fd5fd1f5c79a22470690f75556c4736e34426
+
 ## Development Setup
 
 1. Start the local database using Docker:
