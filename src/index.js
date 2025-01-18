@@ -1,8 +1,14 @@
-import TelegramBot from 'node-telegram-bot-api';
-import dotenv from 'dotenv';
-import { connect } from './starknet.js';
-import { handleStart, handleJoin, handleWallet, handleSignature } from './commands.js';
-import { initDatabase, getAllUserWallets } from './db.js';
+import { getAllUserWallets, initDatabase } from "./db.js";
+import {
+  handleJoin,
+  handleSignature,
+  handleStart,
+  handleWallet,
+} from "./commands.js";
+
+import TelegramBot from "node-telegram-bot-api";
+import { connect } from "./starknet.js";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -10,7 +16,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const groupId = process.env.TELEGRAM_GROUP_ID;
 
 if (!token || !groupId) {
-  console.error('TELEGRAM_BOT_TOKEN and TELEGRAM_GROUP_ID are required');
+  console.error("TELEGRAM_BOT_TOKEN and TELEGRAM_GROUP_ID are required");
   process.exit(1);
 }
 
@@ -29,13 +35,13 @@ bot.onText(/\/start/, (msg) => handleStart(bot, msg));
 bot.onText(/\/join/, (msg) => handleJoin(bot, msg, userStates));
 
 // Handle messages
-bot.on('message', async (msg) => {
+bot.on("message", async (msg) => {
   const userId = msg.from.id;
   const userState = userStates.get(userId);
-  
-  if (userState === 'WAITING_FOR_WALLET') {
+
+  if (userState === "WAITING_FOR_WALLET") {
     await handleWallet(bot, msg, provider, userStates);
-  } else if (userState === 'WAITING_FOR_SIGNATURE') {
+  } else if (userState === "WAITING_FOR_SIGNATURE") {
     await handleSignature(bot, msg, provider, userStates);
   }
 });
@@ -44,17 +50,17 @@ bot.on('message', async (msg) => {
 setInterval(async () => {
   try {
     const userWallets = await getAllUserWallets();
-    
+
     for (const { user_id, wallet_address } of userWallets) {
       const hasAccess = await checkTokenBalance(provider, wallet_address);
-      
+
       if (!hasAccess) {
         try {
           await bot.banChatMember(groupId, user_id);
           await bot.unbanChatMember(groupId, user_id); // Immediately unban to allow rejoining
           await bot.sendMessage(
             user_id,
-            'You have been removed from the group because you no longer meet the token requirement. You can rejoin once you have the required tokens.'
+            "You have been removed from the group because you no longer meet the token requirement. You can rejoin once you have the required tokens."
           );
         } catch (error) {
           console.error(`Error removing user ${user_id}:`, error);
@@ -62,8 +68,8 @@ setInterval(async () => {
       }
     }
   } catch (error) {
-    console.error('Error in periodic verification:', error);
+    console.error("Error in periodic verification:", error);
   }
 }, 24 * 60 * 60 * 1000);
 
-console.log('Bot is running...');
+console.log("Bot is running...");

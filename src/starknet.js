@@ -1,10 +1,11 @@
-import { Provider, Contract, stark, constants } from 'starknet';
-import dotenv from 'dotenv';
+import { Contract, Provider, constants, stark } from "starknet";
+
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS;
-const MIN_BALANCE = process.env.MIN_BALANCE || '1000000000000000000'; // 1 token by default
+const MIN_BALANCE = process.env.MIN_BALANCE || "1000000000000000000"; // 1 token by default
 
 // ABI for ERC20 token
 const tokenAbi = [
@@ -13,42 +14,42 @@ const tokenAbi = [
       {
         name: "low",
         offset: 0,
-        type: "felt"
+        type: "felt",
       },
       {
         name: "high",
         offset: 1,
-        type: "felt"
-      }
+        type: "felt",
+      },
     ],
     name: "Uint256",
     size: 2,
-    type: "struct"
+    type: "struct",
   },
   {
     inputs: [
       {
         name: "account",
-        type: "felt"
-      }
+        type: "felt",
+      },
     ],
     name: "balanceOf",
     outputs: [
       {
         name: "balance",
-        type: "Uint256"
-      }
+        type: "Uint256",
+      },
     ],
     stateMutability: "view",
-    type: "function"
-  }
+    type: "function",
+  },
 ];
 
 export function connect() {
   return new Provider({
     sequencer: {
-      network: process.env.STARKNET_NETWORK || 'mainnet-alpha'
-    }
+      network: process.env.STARKNET_NETWORK || "sepolia-alpha",
+    },
   });
 }
 
@@ -58,7 +59,7 @@ export async function checkTokenBalance(provider, address) {
     const { balance } = await contract.balanceOf(address);
     return balance.gte(MIN_BALANCE);
   } catch (error) {
-    console.error('Error checking token balance:', error);
+    console.error("Error checking token balance:", error);
     throw error;
   }
 }
@@ -70,7 +71,7 @@ export async function verifySignature(address, signature, message) {
     const recoveredAddress = stark.computeAddress(publicKey);
     return recoveredAddress === address;
   } catch (error) {
-    console.error('Error verifying signature:', error);
+    console.error("Error verifying signature:", error);
     return false;
   }
 }

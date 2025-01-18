@@ -1,112 +1,133 @@
-# starkchat
-StarkChat is a community based telegram app for moderating telegram chats for Starknet based communities
 
+# StarkChat
 
-I've set up the basic structure for the Telegram Bot with the following features:
+StarkChat is a community-based Telegram bot for moderating Telegram chats for Starknet-based communities. It verifies token holdings to manage group access.
 
-Basic command handling (/start and /join)
-Wallet address collection and basic validation
-Placeholder for token balance checking
-State management for user interactions
-To get started:
+## Prerequisites
 
-Create a bot with @BotFather on Telegram and get your bot token
-Replace your_bot_token_here in the .env file with your actual bot token
-Run npm start to start the bot
+- Node.js v18
+- Docker (for local development)
 
-I've implemented the following improvements:
+### Setting Up Node.js
 
-Token Balance Checking:
+```bash
+# Check Node.js version
+node -v
 
-Added ERC20 contract integration
-Configurable token address and minimum balance
-Real balance checking against the contract
-Wallet Ownership Verification:
+# If needed, install Node.js 18 using nvm
+nvm install 18
+nvm use 18
+```
 
-Challenge-response signature verification
-Secure random challenge generation
-Signature validation using Starknet utilities
-Group Access Management:
+## Features
 
-Single-use invite links that expire in 24 hours
-Automatic member verification every 24 hours
-Removal of members who no longer meet requirements
-To use the bot:
+- **Token Balance Verification**
+  - ERC20 contract integration
+  - Configurable token address and minimum balance
+  - Real-time balance checking
 
-Update the .env file with:
+- **Wallet Ownership Verification**
+  - Challenge-response signature verification
+  - Secure random challenge generation
+  - Signature validation using Starknet utilities
 
-Your Telegram bot token
-Your group ID
-The token contract address
-Minimum required balance (in wei)
-Make the bot an admin in your group with permissions to:
+- **Group Access Management**
+  - Single-use invite links (24-hour expiration)
+  - Automatic member verification every 24 hours
+  - Automatic removal of non-compliant members
 
-Ban users
-Create invite links
-Manage members
-The verification flow is now:
+- **Database Storage**
+  - Persistent storage using Turso (libSQL)
+  - User wallet tracking
+  - Join date tracking
 
-User starts with /join
-User provides wallet address
-User signs a challenge message
-Bot verifies signature and token balance
-If successful, user receives a single-use invite link
+## Installation
 
-I've made the following improvements:
+1. Clone the repository:
 
-Added Database Storage:
+```bash
+git clone https://github.com/Dreamscape-Mastermind/starkchat.git
+cd starkchat
+```
 
-Using Turso (libSQL) for persistent storage
-Store user wallet addresses
-Track when users joined
-Improved Verification Flow:
+2. Install dependencies:
 
-Store pending wallet addresses during verification
-Save verified wallet addresses to database
-Clean up temporary data after verification
-Enhanced Periodic Verification:
+```bash
+npm install
+```
 
-Query all user wallets from database
-Check token balance for each user
-Remove users who no longer meet requirements
-To complete the setup:
+3. Create a `.env` file with the following configuration:
 
-Create a Turso database and get your database URL
-Update the .env file with your database URL
-Start the bot with npm start
-The bot will now:
-
-Store verified wallet addresses
-Periodically check all members' token balances
-Remove members who fall below the required balance
-Allow removed members to rejoin when they meet requirements again
-
-
-
-This Cairo contract implements:
-
-Standard ERC-20 functionality:
-
-Transfer tokens
-Check balances
-Approve spending
-Transfer from approved accounts
-Additional features:
-
-Minting capability (owner only)
-Decimals set to 18 (standard for most tokens)
-Full event emission for transfers and approvals
-To use this contract:
-
-Deploy it to Starknet with parameters:
-
-name: "Telegram Access Token"
-symbol: "TAT"
-initial_supply: Amount of tokens to mint initially
-recipient: Address to receive initial supply
-Update your bot's .env file with:
-
-
-TOKEN_ADDRESS=<deployed_contract_address>
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_GROUP_ID=your_group_id_here
+TOKEN_ADDRESS=your_token_contract_address
 MIN_BALANCE=1000000000000000000  # 1 token (18 decimals)
-The bot will use this contract's balance_of function to check if users meet the minimum token requirement for group access.
+STARKNET_NETWORK=sepolia-alpha
+DATABASE_URL=http://127.0.0.1:8080  # For local development
+```
+
+## Development Setup
+
+1. Start the local database using Docker:
+
+```bash
+docker-compose up -d
+```
+
+2. Run the bot in development mode:
+
+```bash
+npm run dev
+```
+
+## Production Setup
+
+1. Create a Turso database and get your database URL
+2. Update the `.env` file with your production database URL
+3. Start the bot:
+
+```bash
+npm start
+```
+
+## Bot Configuration
+
+1. Create a new bot with [@BotFather](https://t.me/botfather) on Telegram
+2. Make the bot an admin in your group with the following permissions:
+   - Ban users
+   - Create invite links
+   - Manage members
+
+## User Verification Flow
+
+1. User initiates with `/start` or `/join`
+2. User provides Starknet wallet address
+3. User signs a challenge message
+4. Bot verifies signature and token balance
+5. If successful, user receives a single-use invite link
+
+## Smart Contract
+
+The project includes an ERC-20 token contract (`src/token_contract.cairo`) with:
+
+- Standard ERC-20 functionality
+- Minting capability (owner only)
+- 18 decimal places
+- Full event emission
+
+### Contract Deployment
+
+1. Deploy the contract to Starknet with parameters:
+   - name: "Telegram Access Token"
+   - symbol: "TAT"
+   - initial_supply: Amount of tokens to mint initially
+   - recipient: Address to receive initial supply
+
+2. Update your bot's `.env` file with the deployed contract address
+
+## License
+
+MIT
+
+## Contributing
