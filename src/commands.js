@@ -1,10 +1,11 @@
 import crypto from "crypto";
 import { saveUserWallet } from "./db.js";
+import { checkTokenBalance, verifySignature } from "./starknet.js";
 
 // Store challenges for signature verification
-const challenges = new Map();
+export const challenges = new Map();
 // Store wallet addresses during verification
-const pendingWallets = new Map();
+export const pendingWallets = new Map();
 
 export async function handleStart(bot, msg) {
   const chatId = msg.chat.id;
@@ -144,10 +145,10 @@ export async function handleSignature(bot, msg, provider, userStates) {
       chatId,
       "An error occurred while verifying your wallet. Please try again later."
     );
+  } finally {
+    // Clean up
+    userStates.delete(userId);
+    challenges.delete(userId);
+    pendingWallets.delete(userId);
   }
-
-  // Clean up
-  userStates.delete(userId);
-  challenges.delete(userId);
-  pendingWallets.delete(userId);
 }
