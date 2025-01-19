@@ -9,75 +9,102 @@ import {
 import TelegramBot from "node-telegram-bot-api";
 import { connect } from "./starknet.js";
 import { cookieJar } from "./cookies.js";
+import cors from "cors";
+import crypto from "crypto";
 import dotenv from "dotenv";
+import express from "express";
 
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const groupId = process.env.TELEGRAM_GROUP_ID;
+const frontendUrl = process.env.FRONTEND_URL;
 
-if (!token || !groupId) {
-  console.error("TELEGRAM_BOT_TOKEN and TELEGRAM_GROUP_ID are required");
+if (!token || !groupId || !frontendUrl) {
+  console.error(
+    "TELEGRAM_BOT_TOKEN, TELEGRAM_GROUP_ID and FRONTEND_URL are required"
+  );
   process.exit(1);
 }
 
+// Create bot instance
 const bot = new TelegramBot(token, {
   polling: true,
   request: { jar: cookieJar },
 });
 
-const userStates = new Map();
+// Initialize express app
+const app = express();
+app.use(cors({ origin: "http://localhost:5173" }));
+app.use(express.json());
+
+// Store challenges
+const challenges = new Map();
+
+// Initialize database and Starknet connection
 const provider = connect();
 await initDatabase();
 
-bot.onText(/\/start/, (msg) => handleStart(bot, msg));
-bot.onText(/\/join/, (msg) => handleJoin(bot, msg, userStates));
+// API endpoints
+app.post("/api/verify", async (req, res) => {
+  const { userId, walletAddress, signature } = req.body;
 
-bot.on("message", async (msg) => {
-  const userId = msg.from.id;
-  const userState = userStates.get(userId);
+  try {
+    const challenge = challenges.get(userId);
+    if (!challenge) {
+      return res.status(400).json({ error: "Challenge not found" });
+    }
 
-  if (userState === "WAITING_FOR_WALLET") {
-    await handleWallet(bot, msg, provider, userStates);
-  } else if (userState === "WAITING_FOR_SIGNATURE") {
-    await handleSignature(bot, msg, provider, userStates);
+    const isValid = await verifySignature(walletAddress, signature, challenge);
+    if (!isValid) {
+      return res.status(400).json({ error: "Invalid signature" });
+    }
+
+    const hasAccess = await checkTokenBalance(provider, walletAddress);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Insufficient token balance" });
+    }
+
+    // Generate invite link
+    const inviteLink = await bot.createChatInviteLink(groupId, {
+      member_limit: 1,
+      expire_date: Math.floor(Date.now() / 1000) + 86400,
+    });
+
+    res.json({ success: true, inviteLink: inviteLink.invite_link });
+
+    // Clean up
+    challenges.delete(userId);
+  } catch (error) {
+    console.error("Verification error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Periodic member verification
-const verifyMembers = async () => {
-  try {
-    const batchSize = 50;
-    let offset = 0;
-    let userWallets;
+app.get("/api/challenge/:userId", (req, res) => {
+  const { userId } = req.params;
+  const challenge = crypto.randomBytes(32).toString("hex");
+  challenges.set(userId, challenge);
+  res.json({ challenge });
+});
 
-    do {
-      userWallets = await getAllUserWallets(batchSize, offset);
+// Bot command handlers
+bot.onText(/\/start/, (msg) => handleStart(bot, msg));
+bot.onText(/\/join/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
 
-      for (const { user_id, wallet_address } of userWallets) {
-        const hasAccess = await checkTokenBalance(provider, wallet_address);
+  const verificationUrl = `${frontendUrl}/verify/${userId}`;
+  await bot.sendMessage(
+    chatId,
+    `Please visit this link to verify your wallet and join the group:\n\n${verificationUrl}`
+  );
+});
 
-        if (!hasAccess) {
-          try {
-            await bot.banChatMember(groupId, user_id);
-            await bot.unbanChatMember(groupId, user_id);
-            await bot.sendMessage(
-              user_id,
-              "You have been removed from the group because you no longer meet the token requirement. You can rejoin once you have the required tokens."
-            );
-          } catch (error) {
-            console.error(`Error removing user ${user_id}:`, error);
-          }
-        }
-      }
-
-      offset += batchSize;
-    } while (userWallets.length === batchSize);
-  } catch (error) {
-    console.error("Error in periodic verification:", error);
-  }
-};
-
-setInterval(verifyMembers, 24 * 60 * 60 * 1000); // Every 24 hours
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 console.log("Bot is running...");

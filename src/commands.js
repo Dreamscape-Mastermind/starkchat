@@ -51,7 +51,6 @@ export async function handleWallet(bot, msg, provider, userStates) {
     );
     return;
   }
-
   const walletAddress = msg.text.trim();
 
   // Basic address validation
@@ -94,6 +93,7 @@ export async function handleWallet(bot, msg, provider, userStates) {
 export async function handleSignature(bot, msg, provider, userStates) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+
   const signature = msg.text.trim();
 
   try {
