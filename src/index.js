@@ -2,6 +2,7 @@ import { getAllUserWallets, initDatabase } from "./db.js";
 import {
   handleJoin,
   handleSignature,
+  handleSignatureCallback,
   handleStart,
   handleWallet,
 } from "./commands.js";
@@ -9,7 +10,9 @@ import {
 import TelegramBot from "node-telegram-bot-api";
 import { connect } from "./starknet.js";
 import { cookieJar } from "./cookies.js";
+import cors from "cors";
 import dotenv from "dotenv";
+import express from "express";
 
 dotenv.config();
 
@@ -29,6 +32,39 @@ const bot = new TelegramBot(token, {
 const userStates = new Map();
 const provider = connect();
 await initDatabase();
+
+const app = express();
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+// Add the new route for signature verification
+app.post("/api/verify-signature", async (req, res) => {
+  const { signature, challenge, wallet, userId } = req.body;
+
+  try {
+    // Call the handleSignatureCallback function
+    await handleSignatureCallback(
+      signature,
+      challenge,
+      wallet,
+      userId,
+      bot,
+      provider,
+      userStates
+    );
+    res.status(200).json({ message: "Signature verified successfully." });
+  } catch (error) {
+    console.error("Error verifying signature:", error);
+    res.status(400).json({ message: "Failed to verify signature." });
+  }
+});
 
 bot.onText(/\/start/, (msg) => handleStart(bot, msg));
 bot.onText(/\/join/, (msg) => handleJoin(bot, msg, userStates));

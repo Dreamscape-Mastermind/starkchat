@@ -73,10 +73,16 @@ export async function handleWallet(bot, msg, provider, userStates) {
     // Store wallet address for verification
     pendingWallets.set(userId, walletAddress);
 
-    // Request signature
+    // Generate signing link
+    const signingUrl = `${
+      process.env.FRONTEND_URL
+    }/sign?challenge=${encodeURIComponent(
+      challenge
+    )}&wallet=${walletAddress}&userId=${userId}`;
+
     await bot.sendMessage(
       chatId,
-      `Please sign this message to verify wallet ownership:\n\n${challenge}\n\nSend the signature in your next message.`
+      `Please click the following link to sign the message with your wallet:\n\n${signingUrl}\n\nAfter signing, the verification will complete automatically.`
     );
     userStates.set(userId, "WAITING_FOR_SIGNATURE");
   } catch (error) {
@@ -91,30 +97,75 @@ export async function handleWallet(bot, msg, provider, userStates) {
   }
 }
 
-export async function handleSignature(bot, msg, provider, userStates) {
+// Add new endpoint handler for signature callback
+export async function handleSignatureCallback(
+  signature,
+  challenge,
+  walletAddress,
+  userId,
+  bot,
+  provider,
+  userStates
+) {
+  try {
+    // Verify signature
+    const isValid = await verifySignature(walletAddress, signature, challenge);
+    if (!isValid) {
+      throw new Error("Invalid signature");
+    }
+
+    // Check token balance
+    const hasAccess = await checkTokenBalance(provider, walletAddress);
+
+    if (hasAccess) {
+      // Save verified wallet address
+      await saveUserWallet(userId, walletAddress);
+
+      // Generate invite link
+      const groupId = process.env.TELEGRAM_GROUP_ID;
+      const inviteLink = await createInviteLink(bot, groupId);
+
+      await bot.sendMessage(
+        userId,
+        `Verification successful! Here's your invite link to join the group:\n\n${inviteLink}\n\nThis link will expire in 24 hours and can only be used once.`
+      );
+    } else {
+      await bot.sendMessage(
+        userId,
+        "Sorry, you do not meet the required token holdings. You need at least 1 token to join the group."
+      );
+    }
+  } catch (error) {
+    console.error("Error handling signature callback:", error);
+    await bot.sendMessage(
+      userId,
+      "An error occurred while verifying your wallet. Please try again later."
+    );
+  }
+
+  // Clean up
+  userStates.delete(userId);
+  challenges.delete(userId);
+  pendingWallets.delete(userId);
+}
+
+export const handleSignature = async (bot, msg, provider, userStates) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const signature = msg.text.trim();
 
   try {
+    const signature = msg.text.trim();
     const challenge = challenges.get(userId);
     const walletAddress = pendingWallets.get(userId);
 
     if (!challenge || !walletAddress) {
-      throw new Error("No challenge or wallet address found");
+      throw new Error("No pending verification found");
     }
 
     // Verify signature
     const isValid = await verifySignature(walletAddress, signature, challenge);
     if (!isValid) {
-      await bot.sendMessage(
-        chatId,
-        "Invalid signature. Please try again by using /join"
-      );
-      userStates.delete(userId);
-      challenges.delete(userId);
-      pendingWallets.delete(userId);
-      return;
+      throw new Error("Invalid signature");
     }
 
     // Check token balance
@@ -142,7 +193,7 @@ export async function handleSignature(bot, msg, provider, userStates) {
     console.error("Error handling signature:", error);
     await bot.sendMessage(
       chatId,
-      "An error occurred while verifying your wallet. Please try again later."
+      "An error occurred while verifying your signature. Please try again using /join"
     );
   }
 
@@ -150,4 +201,4 @@ export async function handleSignature(bot, msg, provider, userStates) {
   userStates.delete(userId);
   challenges.delete(userId);
   pendingWallets.delete(userId);
-}
+};
