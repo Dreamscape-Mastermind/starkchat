@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { saveUserWallet } from "./db.js";
 import { checkTokenBalance, verifySignature } from "./starknet.js";
+import { isArgentTMAWallet, checkArgentTMABalance } from './argentWallet.js';
 
 // Store challenges for signature verification
 export const challenges = new Map();
@@ -47,7 +48,7 @@ export async function handleWallet(bot, msg, provider, userStates) {
 
   if (!msg.text || typeof msg.text !== "string") {
     await bot.sendMessage(
-      msg.chat.id,
+      chatId,
       "Invalid input. Please send a valid wallet address as plain text."
     );
     return;
@@ -55,31 +56,67 @@ export async function handleWallet(bot, msg, provider, userStates) {
 
   const walletAddress = msg.text.trim();
 
-  // Basic address validation
-  if (!walletAddress.startsWith("0x") || walletAddress.length !== 66) {
-    await bot.sendMessage(
-      chatId,
-      "Invalid wallet address. Please send a valid Starknet address."
-    );
-    return;
-  }
-
   try {
-    // Get the challenge for this user
-    const challenge = challenges.get(userId);
-    if (!challenge) {
-      throw new Error("No challenge found");
+    // Check if this is an Argent TMA wallet
+    const isArgentWallet = await isArgentTMAWallet(userId);
+
+    if (isArgentWallet) {
+      // Handle Argent TMA wallet
+      const { address, account } = await checkArgentTMABalance(userId);
+      
+      // Store wallet address
+      pendingWallets.set(userId, address);
+      
+      // Skip signature verification for Argent TMA wallets
+      const hasAccess = await checkTokenBalance(provider, address);
+      
+      if (hasAccess) {
+        await saveUserWallet(userId, address);
+        const groupId = process.env.TELEGRAM_GROUP_ID;
+        const inviteLink = await createInviteLink(bot, groupId);
+        
+        await bot.sendMessage(
+          chatId,
+          `Verification successful! Here's your invite link to join the group:\n\n${inviteLink}\n\nThis link will expire in 24 hours and can only be used once.`
+        );
+      } else {
+        await bot.sendMessage(
+          chatId,
+          "Sorry, you do not meet the required token holdings. You need at least 1 token to join the group."
+        );
+      }
+      
+      // Clean up
+      userStates.delete(userId);
+      challenges.delete(userId);
+      pendingWallets.delete(userId);
+      
+    } else {
+      // Handle regular Starknet wallet (existing logic)
+      if (!walletAddress.startsWith("0x") || walletAddress.length !== 66) {
+        await bot.sendMessage(
+          chatId,
+          "Invalid wallet address. Please send a valid Starknet address."
+        );
+        return;
+      }
+
+      // Get the challenge for this user
+      const challenge = challenges.get(userId);
+      if (!challenge) {
+        throw new Error("No challenge found");
+      }
+
+      // Store wallet address for verification
+      pendingWallets.set(userId, walletAddress);
+
+      // Request signature
+      await bot.sendMessage(
+        chatId,
+        `Please sign this message to verify wallet ownership:\n\n${challenge}\n\nSend the signature in your next message.`
+      );
+      userStates.set(userId, "WAITING_FOR_SIGNATURE");
     }
-
-    // Store wallet address for verification
-    pendingWallets.set(userId, walletAddress);
-
-    // Request signature
-    await bot.sendMessage(
-      chatId,
-      `Please sign this message to verify wallet ownership:\n\n${challenge}\n\nSend the signature in your next message.`
-    );
-    userStates.set(userId, "WAITING_FOR_SIGNATURE");
   } catch (error) {
     console.error("Error handling wallet:", error);
     await bot.sendMessage(

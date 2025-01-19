@@ -71,7 +71,7 @@ export async function verifySignature(address, signature, message) {
  * @param {string} options.network - Network name ('SN_MAIN' or 'SN_SEPOLIA'), defaults to Sepolia
  * @returns {Promise<Array>} The contract ABI
  */
-async function fetchABI(contractAddress, options = {}) {
+export async function fetchABI(contractAddress, options = {}) {
   // Input validation
   if (!contractAddress?.startsWith('0x')) {
     throw new Error('Invalid contract address format');
