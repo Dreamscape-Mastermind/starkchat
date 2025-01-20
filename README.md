@@ -1,141 +1,142 @@
+# StarkChat 🚀
 
-# StarkChat
+StarkChat is a Telegram bot that revolutionizes community management for Starknet-based projects by implementing token-gated access control. Perfect for DAOs, NFT communities, and token holders.
 
-StarkChat is a community-based Telegram bot for moderating Telegram chats for Starknet-based communities. It verifies token holdings to manage group access.
+## 🌟 Key Features
 
-## Prerequisites
+- **Token-Gated Access Control**
+  - Automatic verification of ERC20 token holdings
+  - Configurable minimum balance requirements
+  - Support for any Starknet ERC20 token
 
-- Node.js v18
+- **Secure Wallet Verification**
+  - Cryptographic challenge-response system
+  - Starknet signature verification
+  - Protection against wallet spoofing
+
+- **Smart Group Management**
+  - Time-limited invite links (24h expiration)
+  - Daily member verification
+  - Automated removal of non-compliant members
+  - Seamless user experience
+
+## 🛠️ Tech Stack
+
+- **Backend**: Node.js (v18+)
+- **Database**: Turso (libSQL)
+- **Blockchain**: Starknet
+- **Frontend**: React (for admin dashboard)
+- **Infrastructure**: Docker support
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js v18+
 - Docker (for local development)
+- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
+- Starknet Wallet
 
-### Setting Up Node.js
+### Installation
 
-```bash
-# Check Node.js version
-node -v
-
-# If needed, install Node.js 18 using nvm
-nvm install 18
-nvm use 18
-```
-
-## Features
-
-- **Token Balance Verification**
-  - ERC20 contract integration
-  - Configurable token address and minimum balance
-  - Real-time balance checking
-
-- **Wallet Ownership Verification**
-  - Challenge-response signature verification
-  - Secure random challenge generation
-  - Signature validation using Starknet utilities
-
-- **Group Access Management**
-  - Single-use invite links (24-hour expiration)
-  - Automatic member verification every 24 hours
-  - Automatic removal of non-compliant members
-
-- **Database Storage**
-  - Persistent storage using Turso (libSQL)
-  - User wallet tracking
-  - Join date tracking
-
-## Installation
-
-1. Clone the repository:
-
+1. Clone and setup:
 ```bash
 git clone https://github.com/Dreamscape-Mastermind/starkchat.git
 cd starkchat
-```
-
-2. Install dependencies:
-
-```bash
 npm install
 ```
 
-3. Create a `.env` file with the following configuration:
+2. Configure environment:
+```bash
+cp .env.example .env
+```
 
+Edit `.env` with your credentials:
 ```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_GROUP_ID=your_group_id_here
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_GROUP_ID=your_group_id
 TOKEN_ADDRESS=your_token_contract_address
 MIN_BALANCE=1000000000000000000  # 1 token (18 decimals)
 STARKNET_NETWORK=sepolia-alpha
-DATABASE_URL=http://127.0.0.1:8080  # For local development
+DATABASE_URL=your_turso_db_url
 ```
 
-Regarding the Contract: You can use any existing ERC20 token contract on Starknet testnet instead of deploying a new one. Here are some options:
+### Development
 
-a) Use the ETH token contract on testnet:
-ETH Token Address (Goerli): 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
-
-b) Use the test USDC on Goerli:
-USDC Token Address (Goerli): 0x005a643907b9a4bc6a55e9069c4fd5fd1f5c79a22470690f75556c4736e34426
-
-## Development Setup
-
-1. Start the local database using Docker:
-
+Run all services (bot + frontend):
 ```bash
-docker-compose up -d
+npm run dev:all
 ```
 
-2. Run the bot in development mode:
-
+Or run services separately:
 ```bash
+# Run bot only
 npm run dev
+
+# Run frontend only
+npm run dev:frontend
 ```
 
-## Production Setup
-
-1. Create a Turso database and get your database URL
-2. Update the `.env` file with your production database URL
-3. Start the bot:
-
+### Production
 ```bash
+npm run build:frontend
 npm start
 ```
 
-## Bot Configuration
+## 🔑 Token Contract Options
 
-1. Create a new bot with [@BotFather](https://t.me/botfather) on Telegram
-2. Make the bot an admin in your group with the following permissions:
-   - Ban users
-   - Create invite links
-   - Manage members
+### Ready-to-Use Test Tokens (Sepolia)
+- ETH: `0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7`
+- USDC: `0x005a643907b9a4bc6a55e9069c4fd5fd1f5c79a22470690f75556c4736e34426`
 
-## User Verification Flow
+## 🤖 Bot Setup
 
-1. User initiates with `/start` or `/join`
-2. User provides Starknet wallet address
-3. User signs a challenge message
-4. Bot verifies signature and token balance
-5. If successful, user receives a single-use invite link
+1. Create bot via [@BotFather](https://t.me/botfather)
+2. Set bot permissions:
+   - ✅ Ban users
+   - ✅ Invite management
+   - ✅ Member management
 
-## Smart Contract
+## 👥 User Flow
 
-The project includes an ERC-20 token contract (`src/token_contract.cairo`) with:
+1. User starts bot (`/start` or `/join`)
+2. Provides Starknet wallet
+3. Signs verification message
+4. Bot checks token balance
+5. User receives private invite link
 
-- Standard ERC-20 functionality
-- Minting capability (owner only)
-- 18 decimal places
-- Full event emission
+## 🛡️ Security Features
 
-### Contract Deployment
+- Single-use invite links
+- Cryptographic wallet verification
+- Regular balance checks
+- Automated member management
 
-1. Deploy the contract to Starknet with parameters:
-   - name: "Telegram Access Token"
-   - symbol: "TAT"
-   - initial_supply: Amount of tokens to mint initially
-   - recipient: Address to receive initial supply
+## 🧪 Testing
 
-2. Update your bot's `.env` file with the deployed contract address
+```bash
+# Run test suite
+npm test
 
-## License
+# Run with watch mode
+npm run test:watch
+```
+
+## 📚 API Documentation
+
+API documentation is available at `/docs` when running the development server.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📄 License
 
 MIT
 
-## Contributing
+## 🙋‍♂️ Support
+
+- Create an issue on GitHub
+
+---
+
+Built with ❤️ for the Starknet Community
